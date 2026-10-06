@@ -7,21 +7,21 @@ import { createClient } from "@/utils/supabase/client";
 
 function toKorean(message: string, code?: string) {
   const m = message.toLowerCase();
-  if (code === "invalid_credentials" || m.includes("invalid login credentials"))
-    return "이메일 또는 비밀번호가 올바르지 않습니다.";
-  if (code === "email_not_confirmed" || m.includes("not confirmed"))
-    return "이메일 인증이 완료되지 않았습니다. 메일을 확인해 주세요.";
-  if (code === "over_request_rate_limit" || m.includes("rate limit"))
-    return "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+  if (code === "same_password" || m.includes("different from the old"))
+    return "이전과 다른 비밀번호를 입력해 주세요.";
+  if (code === "weak_password" || m.includes("password should be"))
+    return "비밀번호는 6자 이상이어야 합니다.";
+  if (code === "session_not_found" || m.includes("session"))
+    return "링크가 만료되었습니다. 비밀번호 찾기를 다시 진행해 주세요.";
   if (m.includes("fetch") || m.includes("network"))
     return "네트워크 오류가 발생했습니다. 연결을 확인해 주세요.";
-  return "로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+  return "비밀번호 변경에 실패했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -31,17 +31,18 @@ export default function LoginPage() {
     return () => clearTimeout(t);
   }, [error]);
 
-  const canSubmit = email.trim() !== "" && password !== "";
+  const canSubmit = password !== "" && confirm !== "";
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
     setError("");
+    if (password !== confirm) {
+      setError("비밀번호가 일치하지 않습니다.");
+      return;
+    }
     setLoading(true);
-    const { error } = await createClient().auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    const { error } = await createClient().auth.updateUser({ password });
     setLoading(false);
     if (error) {
       setError(toKorean(error.message, error.code));
@@ -62,40 +63,35 @@ export default function LoginPage() {
         </div>
       )}
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-4 p-8">
-        <h1 className="text-2xl font-bold">로그인</h1>
+        <h1 className="text-2xl font-bold">비밀번호 재설정</h1>
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
           <input
-            type="email"
+            type="password"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="이메일"
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="새 비밀번호 (6자 이상)"
             className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
           />
           <input
             type="password"
             required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="비밀번호"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="새 비밀번호 확인"
             className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
           />
           <button
             disabled={!canSubmit || loading}
             className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80 disabled:opacity-50"
           >
-            로그인
+            비밀번호 변경
           </button>
         </form>
         <p className="text-sm text-zinc-500">
           <Link href="/forgot-password" className="underline">
-            비밀번호를 잊으셨나요?
-          </Link>
-        </p>
-        <p className="text-sm text-zinc-500">
-          계정이 없으신가요?{" "}
-          <Link href="/signup" className="underline">
-            회원가입
+            링크가 만료되었나요? 다시 요청하기
           </Link>
         </p>
       </main>

@@ -12,9 +12,30 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteName = "내 블로그";
+const siteDescription = "게시판과 게시글을 만들고 관리하는 간단한 블로그";
+
 export const metadata: Metadata = {
-  title: "내 블로그",
-  description: "간단한 블로그 홈페이지",
+  metadataBase: new URL(siteUrl),
+  title: { default: siteName, template: `%s | ${siteName}` },
+  description: siteDescription,
+  applicationName: siteName,
+  keywords: ["블로그", "게시판", "게시글"],
+  icons: { icon: "/favicon.ico", shortcut: "/favicon.ico" },
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    siteName,
+    title: siteName,
+    description: siteDescription,
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteName,
+    description: siteDescription,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

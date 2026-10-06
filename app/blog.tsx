@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 
 type Post = { id: number; title: string; content: string };
@@ -12,6 +12,10 @@ const POST = "post";
 const BOARD = "board";
 
 export default function Blog() {
+  const router = useRouter();
+  const [userEmail, setUserEmail] = useState("");
+  const submittingRef = useRef(false);
+  const [submitting, setSubmitting] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [boardId, setBoardId] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -25,6 +29,18 @@ export default function Blog() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+
+  useEffect(() => {
+    supabase.auth
+      .getUser()
+      .then(({ data }) => setUserEmail(data.user?.email ?? ""));
+  }, []);
+
+  async function logout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   useEffect(() => {
     supabase
@@ -99,7 +115,10 @@ export default function Blog() {
   async function saveName(id: number) {
     const next = nameDraft.trim();
     if (next) {
-      const { error } = await supabase.from(BOARD).update({ name: next }).eq("id", id);
+      const { error } = await supabase
+        .from(BOARD)
+        .update({ name: next })
+        .eq("id", id);
       if (error) {
         setError(error.message);
         return;
@@ -156,6 +175,19 @@ export default function Blog() {
   async function submitPost(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    // 요청이 끝나기 전의 중복 제출(더블 클릭, Enter 연타)을 막는다
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    try {
+      await savePost();
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
+
+  async function savePost() {
     if (editingId !== null) {
       const { error } = await supabase
         .from(POST)
@@ -193,27 +225,24 @@ export default function Blog() {
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-zinc-200 dark:border-zinc-800">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-        <button
-          onClick={startWriting}
-          disabled={boardId === null}
-          className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80 disabled:opacity-40"
-        >
-          글쓰기
-        </button>
-        <nav className="flex gap-2">
-          <Link
-            href="/login"
-            className="rounded border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+          <button
+            onClick={startWriting}
+            disabled={boardId === null}
+            className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80 disabled:opacity-40"
           >
-            로그인
-          </Link>
-          <Link
-            href="/signup"
-            className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80"
-          >
-            회원가입
-          </Link>
-        </nav>
+            글쓰기
+          </button>
+          <div className="flex items-center gap-3">
+            {userEmail && (
+              <span className="text-sm text-zinc-500">{userEmail}</span>
+            )}
+            <button
+              onClick={logout}
+              className="rounded border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
       </header>
 
@@ -227,7 +256,18 @@ export default function Blog() {
               title="게시판 추가"
               className="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-900"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
             </button>
           </div>
 
@@ -276,7 +316,19 @@ export default function Blog() {
                         title="게시판 이름 수정"
                         className="rounded p-1 text-zinc-500 hover:text-foreground"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-4 w-4"
+                        >
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                        </svg>
                       </button>
                       <button
                         onClick={() => deleteBoard(b)}
@@ -284,7 +336,21 @@ export default function Blog() {
                         title="게시판 삭제"
                         className="rounded p-1 text-zinc-500 hover:text-red-500"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /></svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-4 w-4"
+                        >
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4h8v2" />
+                          <path d="M19 6l-1 14H6L5 6" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
                       </button>
                     </div>
                   </div>
@@ -292,7 +358,9 @@ export default function Blog() {
                 {b.id === boardId && (
                   <ul className="mb-1 ml-3 mt-1 flex flex-col gap-0.5 border-l border-zinc-200 pl-2 dark:border-zinc-800">
                     {posts.length === 0 && (
-                      <li className="px-2 py-1 text-xs text-zinc-500">글이 없습니다.</li>
+                      <li className="px-2 py-1 text-xs text-zinc-500">
+                        글이 없습니다.
+                      </li>
                     )}
                     {posts.map((p) => (
                       <li key={p.id}>
@@ -319,9 +387,14 @@ export default function Blog() {
         </aside>
 
         <main className="flex-1 p-8">
-          {error && <p className="mb-4 text-center text-sm text-red-500">{error}</p>}
+          {error && (
+            <p className="mb-4 text-center text-sm text-red-500">{error}</p>
+          )}
           {writing ? (
-            <form onSubmit={submitPost} className="mx-auto flex max-w-2xl flex-col gap-3">
+            <form
+              onSubmit={submitPost}
+              className="mx-auto flex max-w-2xl flex-col gap-3"
+            >
               <input
                 autoFocus
                 value={title}
@@ -337,7 +410,10 @@ export default function Blog() {
                 className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
               />
               <div className="flex gap-2">
-                <button className="rounded bg-foreground px-4 py-2 text-sm text-background hover:opacity-80">
+                <button
+                  disabled={submitting}
+                  className="rounded bg-foreground px-4 py-2 text-sm text-background hover:opacity-80 disabled:opacity-50"
+                >
                   {editingId !== null ? "저장" : "등록"}
                 </button>
                 <button
@@ -368,10 +444,18 @@ export default function Blog() {
                   </button>
                 </div>
               </div>
-              <p className="whitespace-pre-wrap leading-7">{selected.content}</p>
+              <p className="whitespace-pre-wrap leading-7">
+                {selected.content}
+              </p>
             </article>
           ) : (
-            <p className="text-center text-zinc-500">{!loaded ? "" : boardId !== null ? "글을 선택하거나 새 글을 작성하세요." : "게시판이 없습니다. + 버튼으로 게시판을 만들어 주세요."}</p>
+            <p className="text-center text-zinc-500">
+              {!loaded
+                ? ""
+                : boardId !== null
+                  ? "글을 선택하거나 새 글을 작성하세요."
+                  : "게시판이 없습니다. + 버튼으로 게시판을 만들어 주세요."}
+            </p>
           )}
         </main>
       </div>
