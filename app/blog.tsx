@@ -14,6 +14,7 @@ const BOARD = "board";
 export default function Blog() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
+  const [listOpen, setListOpen] = useState(true);
   const submittingRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -91,8 +92,18 @@ export default function Blog() {
 
   function selectBoard(id: number) {
     setBoardId(id);
+    setListOpen(true);
     setWriting(false);
     setEditingBoardId(null);
+  }
+
+  // 현재 게시판 제목을 누르면 글 목록을 접고 펼친다
+  function toggleBoard(id: number) {
+    if (id === boardId) {
+      setListOpen(!listOpen);
+    } else {
+      selectBoard(id);
+    }
   }
 
   async function createBoard() {
@@ -222,19 +233,15 @@ export default function Blog() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       <header className="border-b border-zinc-200 dark:border-zinc-800">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-          <button
-            onClick={startWriting}
-            disabled={boardId === null}
-            className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80 disabled:opacity-40"
-          >
-            글쓰기
-          </button>
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-end px-4 py-3">
           <div className="flex items-center gap-3">
             {userEmail && (
-              <span className="text-sm text-zinc-500">{userEmail}</span>
+              <span className="text-sm text-zinc-500">
+                <span className="font-bold">{userEmail}</span>로 로그인
+                되었습니다
+              </span>
             )}
             <button
               onClick={logout}
@@ -246,10 +253,9 @@ export default function Blog() {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-5xl flex-1">
-        <aside className="w-64 shrink-0 border-r border-zinc-200 p-4 dark:border-zinc-800">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold">게시판</h2>
+      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1">
+        <aside className="flex w-64 shrink-0 flex-col border-r border-zinc-200 p-4 dark:border-zinc-800">
+          <div className="mb-4 flex shrink-0 items-center justify-between gap-2">
             <button
               onClick={createBoard}
               aria-label="게시판 추가"
@@ -271,7 +277,7 @@ export default function Blog() {
             </button>
           </div>
 
-          <ul className="flex flex-col gap-1">
+          <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
             {boards.map((b) => (
               <li key={b.id}>
                 {editingBoardId === b.id ? (
@@ -294,19 +300,20 @@ export default function Blog() {
                   </form>
                 ) : (
                   <div
-                    className={`flex items-center justify-between gap-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 ${
+                    className={`group flex items-center justify-between gap-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 ${
                       b.id === boardId ? "bg-zinc-100 dark:bg-zinc-900" : ""
                     }`}
                   >
                     <button
-                      onClick={() => selectBoard(b.id)}
+                      onClick={() => toggleBoard(b.id)}
+                      aria-expanded={b.id === boardId && listOpen}
                       className={`min-w-0 flex-1 truncate px-2 py-1.5 text-left text-sm ${
-                        b.id === boardId ? "font-semibold" : ""
+                        b.id === boardId && listOpen ? "font-semibold" : ""
                       }`}
                     >
                       {b.name}
                     </button>
-                    <div className="flex shrink-0 items-center pr-1">
+                    <div className="flex shrink-0 items-center pr-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
                       <button
                         onClick={() => {
                           setNameDraft(b.name);
@@ -355,7 +362,7 @@ export default function Blog() {
                     </div>
                   </div>
                 )}
-                {b.id === boardId && (
+                {b.id === boardId && listOpen && (
                   <ul className="mb-1 ml-3 mt-1 flex flex-col gap-0.5 border-l border-zinc-200 pl-2 dark:border-zinc-800">
                     {posts.length === 0 && (
                       <li className="px-2 py-1 text-xs text-zinc-500">
@@ -384,9 +391,20 @@ export default function Blog() {
               </li>
             ))}
           </ul>
+
+          {/* 게시판 목록 스크롤과 무관하게 항상 사이드바 맨 아래 가운데에 고정 */}
+          <div className="mt-4 flex shrink-0 justify-center">
+            <button
+              onClick={startWriting}
+              disabled={boardId === null}
+              className="rounded bg-foreground px-6 py-2 text-sm font-medium text-background hover:opacity-80 disabled:opacity-40"
+            >
+              글쓰기
+            </button>
+          </div>
         </aside>
 
-        <main className="flex-1 p-8">
+        <main className="flex-1 overflow-y-auto px-8 pb-8 pt-14">
           {error && (
             <p className="mb-4 text-center text-sm text-red-500">{error}</p>
           )}
@@ -427,9 +445,9 @@ export default function Blog() {
             </form>
           ) : selected ? (
             <article className="mx-auto max-w-2xl">
-              <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="mb-11 flex items-start justify-between gap-4">
                 <h1 className="text-2xl font-bold">{selected.title}</h1>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex h-8 shrink-0 items-center gap-2">
                   <button
                     onClick={() => startEditing(selected)}
                     className="rounded border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"

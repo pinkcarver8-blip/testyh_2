@@ -33,6 +33,16 @@ export default function LoginPage() {
 
   const canSubmit = email.trim() !== "" && password !== "";
 
+  async function signInWithKakao() {
+    setError("");
+    const { error } = await createClient().auth.signInWithOAuth({
+      provider: "kakao",
+      options: { redirectTo: `${location.origin}/auth/callback` },
+    });
+    if (error)
+      setError("카카오 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
@@ -87,6 +97,13 @@ export default function LoginPage() {
             로그인
           </button>
         </form>
+        <button
+          type="button"
+          onClick={signInWithKakao}
+          className="rounded bg-[#FEE500] px-4 py-2 text-sm font-medium text-[#191919] hover:opacity-90"
+        >
+          카카오 계정으로 로그인
+        </button>
         <p className="text-sm text-zinc-500">
           <Link href="/forgot-password" className="underline">
             비밀번호를 잊으셨나요?
