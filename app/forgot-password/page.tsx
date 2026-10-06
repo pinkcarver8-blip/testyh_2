@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
             />
             <button
               disabled={!canSubmit || loading}
-              className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80 disabled:opacity-50"
+              className="rounded bg-primary hover:bg-primary-hover px-4 py-2 text-sm font-medium text-white  disabled:opacity-50"
             >
               비밀번호 리셋 링크 발송
             </button>

@@ -1,26 +1,108 @@
 @import "tailwindcss";
 
+/* IntelliJ IDEA (New UI, Dark) 팔레트 */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+  --background: #141517; /* 에디터 배경 */
+  --foreground: #dfe1e5; /* 기본 글자 */
+  --panel: #141517; /* 도구 창/패널 배경 */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-panel: var(--panel);
+  --font-sans:
+    var(--font-jetbrains-mono), "Malgun Gothic", "Apple SD Gothic Neo",
+    "Noto Sans KR", monospace;
+  --font-mono:
+    var(--font-jetbrains-mono), "Malgun Gothic", "Apple SD Gothic Neo",
+    "Noto Sans KR", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  /* 버튼/강조: IntelliJ 기본 파란색 */
+  --color-primary: #3574f0;
+  --color-primary-hover: #4682f4;
+  --color-selection: #2e436e; /* 트리/목록 선택 행 */
+
+  /* IntelliJ UI 글자 크기: 기본 13px */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.8125rem;
+  --text-lg: 0.9375rem;
+  --text-xl: 1.0625rem;
+  --text-2xl: 1.25rem;
+
+  /* 구문 강조 색상 (요소별 글자 색 구분) */
+  --color-ij-keyword: #cf8e6d;
+  --color-ij-string: #6aab73;
+  --color-ij-number: #2aacb8;
+  --color-ij-function: #56a8f5;
+  --color-ij-field: #c77dbb;
+  --color-ij-link: #548af7;
+  --color-ij-error: #f75464;
+
+  /* 회색 계열: 라이트/다크 클래스 모두 IntelliJ Dark 톤으로 통일 */
+  --color-zinc-50: #2e3035;
+  --color-zinc-100: #2e3035;
+  --color-zinc-200: #393b40;
+  --color-zinc-300: #4e5157; /* 컴포넌트 테두리 */
+  --color-zinc-400: #6f737a;
+  --color-zinc-500: #868a91;
+  --color-zinc-600: #6f737a;
+  --color-zinc-700: #4e5157;
+  --color-zinc-800: #393b40;
+  --color-zinc-900: #2e3035;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    var(--font-jetbrains-mono), "Malgun Gothic", "Apple SD Gothic Neo",
+    "Noto Sans KR", monospace;
+}
+
+::placeholder {
+  color: #6f737a;
+}
+
+::selection {
+  background: #214283; /* IntelliJ 선택 영역 */
+}
+
+body {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+/* IntelliJ 포커스 링 */
+:focus-visible {
+  outline: 2px solid #3574f0;
+  outline-offset: -1px;
+}
+input:focus-visible,
+textarea:focus-visible {
+  outline-offset: 0;
+  border-color: #3574f0;
+}
+
+/* IntelliJ 스타일 얇은 스크롤바 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #4e5157 transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #4e5157;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
