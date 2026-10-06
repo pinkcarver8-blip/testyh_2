@@ -4,6 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import {
+  AuthShell,
+  Field,
+  Separator,
+  kakaoButton,
+  linkClass,
+  primaryButton,
+  secondaryButton,
+} from "../auth-ui";
+import { UserIcon } from "../icons";
 
 function toKorean(message: string, code?: string) {
   const m = message.toLowerCase();
@@ -109,101 +119,102 @@ export default function SignupPage() {
   }
 
   return (
-    <>
-      {error && (
-        <div
-          role="alert"
-          className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded bg-red-600 px-4 py-3 text-sm text-white shadow-lg"
-        >
-          {error}
-        </div>
-      )}
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-4 p-8">
-        <h1 className="text-2xl font-bold">회원가입</h1>
-        {sentTo ? (
-          <div className="flex flex-col gap-3 rounded border border-zinc-300 p-4 text-sm dark:border-zinc-700">
-            <p className="font-medium">이메일 인증이 필요합니다.</p>
-            <p>
-              <span className="font-medium">{sentTo}</span>(으)로 인증 메일을
-              보냈습니다. 메일의 확인 링크를 눌러 인증을 완료한 뒤 로그인해
-              주세요.
-            </p>
-            {notice && <p className="text-zinc-500">{notice}</p>}
+    <AuthShell
+      title="회원가입"
+      icon={<UserIcon className="h-4 w-4" />}
+      error={error}
+      onDismissError={() => setError("")}
+    >
+      {sentTo ? (
+        <div className="flex flex-col gap-3">
+          <p className="font-bold text-ij-keyword">이메일 인증이 필요합니다.</p>
+          <p>
+            <span className="font-bold">{sentTo}</span>(으)로 인증 메일을
+            보냈습니다. 메일의 확인 링크를 눌러 인증을 완료한 뒤 로그인해
+            주세요.
+          </p>
+          {notice && <p className="text-xs text-zinc-500">{notice}</p>}
+          <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={resend}
               disabled={cooldown > 0 || loading}
-              className="rounded border border-zinc-300 px-4 py-2 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+              className={secondaryButton}
             >
               {cooldown > 0
                 ? `인증 메일 재발송 (${cooldown}초)`
                 : "인증 메일 재발송"}
             </button>
+          </div>
+          <Separator />
+          <div className="flex flex-col gap-1 text-xs">
             <button
               type="button"
               onClick={() => {
                 setSentTo("");
                 setNotice("");
               }}
-              className="text-left underline"
+              className={`text-left ${linkClass}`}
             >
               다른 이메일로 다시 가입하기
             </button>
-            <Link href="/login" className="underline">
+            <Link href="/login" className={linkClass}>
               로그인 페이지로 이동
             </Link>
           </div>
-        ) : (
+        </div>
+      ) : (
+        <>
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
-            <input
+            <Field
+              label="이메일"
               type="email"
               required
+              autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="이메일"
-              className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+              placeholder="name@example.com"
             />
-            <input
+            <Field
+              label="비밀번호 (6자 이상)"
               type="password"
               required
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호 (6자 이상)"
-              className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
             />
-            <input
+            <Field
+              label="비밀번호 확인"
               type="password"
               required
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              placeholder="비밀번호 확인"
-              className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
             />
-            <button
-              disabled={!canSubmit || loading}
-              className="rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:border dark:border-zinc-600"
-            >
-              회원가입
-            </button>
+            <div className="flex justify-end">
+              <button
+                disabled={!canSubmit || loading}
+                className={primaryButton}
+              >
+                회원가입
+              </button>
+            </div>
           </form>
-        )}
-        {!sentTo && (
+          <Separator />
           <button
             type="button"
             onClick={signInWithKakao}
-            className="rounded bg-[#FEE500] px-4 py-2 text-sm font-medium text-[#191919] hover:opacity-90"
+            className={kakaoButton}
           >
             카카오 로그인
           </button>
-        )}
-        <p className="text-sm text-zinc-500">
-          이미 계정이 있으신가요?{" "}
-          <Link href="/login" className="underline">
-            로그인
-          </Link>
-        </p>
-      </main>
-    </>
+          <p className="text-xs text-zinc-500">
+            이미 계정이 있으신가요?{" "}
+            <Link href="/login" className={linkClass}>
+              로그인
+            </Link>
+          </p>
+        </>
+      )}
+    </AuthShell>
   );
 }

@@ -9,6 +9,7 @@ import {
   ChevronRightIcon,
   CommentIcon,
   CheckIcon,
+  ClassIcon,
   DeleteIcon,
   EditIcon,
   HtmlFileIcon,
@@ -34,6 +35,7 @@ type Post = {
   content: string;
   ownerEmail: string;
   attachments: Attachment[];
+  isNotice: boolean;
 };
 type Comment = {
   id: number;
@@ -82,7 +84,9 @@ export default function AdminPage() {
           .order("id"),
         supabase
           .from("post")
-          .select("id, board_id, title, description, owner_email, attachments")
+          .select(
+            "id, board_id, title, description, owner_email, attachments, is_notice",
+          )
           .order("id", { ascending: false }),
         supabase
           .from("comment")
@@ -120,6 +124,7 @@ export default function AdminPage() {
           content: (r.description ?? "") as string,
           ownerEmail: (r.owner_email ?? "알 수 없음") as string,
           attachments: (r.attachments ?? []) as Attachment[],
+          isNotice: (r.is_notice ?? false) as boolean,
         })),
       );
     }
@@ -272,6 +277,21 @@ export default function AdminPage() {
     setComments(comments.filter((c) => c.id !== comment.id));
   }
 
+  async function toggleNotice(post: Post) {
+    const next = !post.isNotice;
+    const { error } = await supabase
+      .from("post")
+      .update({ is_notice: next })
+      .eq("id", post.id);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setPosts(
+      posts.map((p) => (p.id === post.id ? { ...p, isNotice: next } : p)),
+    );
+  }
+
   async function deletePost(post: Post) {
     if (!confirm(`'${post.title}' (${post.ownerEmail}) 게시글을 삭제할까요?`))
       return;
@@ -294,7 +314,11 @@ export default function AdminPage() {
     return (
       <li key={p.id}>
         <div className="group flex h-7 items-center gap-1.5 rounded px-2 hover:bg-zinc-100">
-          <HtmlFileIcon className="h-4 w-4 shrink-0" />
+          {p.isNotice ? (
+            <ClassIcon className="h-4 w-4 shrink-0" />
+          ) : (
+            <HtmlFileIcon className="h-4 w-4 shrink-0" />
+          )}
           <span className="min-w-0 flex-1 truncate">{p.title}</span>
           <span className="shrink-0 text-xs text-zinc-500">{p.ownerEmail}</span>
           <button
@@ -308,6 +332,19 @@ export default function AdminPage() {
             {mine.length}
           </button>
           <div className="flex shrink-0 items-center">
+            {boards.find((b) => b.id === p.boardId)?.isPublic && (
+              <button
+                onClick={() => toggleNotice(p)}
+                aria-pressed={p.isNotice}
+                aria-label={p.isNotice ? "공지 해제" : "공지로 설정"}
+                title={p.isNotice ? "공지 해제" : "공지로 설정"}
+                className="rounded p-1"
+              >
+                <ClassIcon
+                  className={`h-4 w-4 ${p.isNotice ? "" : "opacity-40 grayscale"}`}
+                />
+              </button>
+            )}
             <button
               onClick={() => openMove(p)}
               aria-label="게시글 이동"
@@ -422,7 +459,9 @@ export default function AdminPage() {
           <ul className="flex flex-col gap-px">
             {sortedBoards.map((b) => {
               const open = !collapsed.has(b.id);
-              const children = posts.filter((p) => p.boardId === b.id);
+              const children = posts
+                .filter((p) => p.boardId === b.id)
+                .sort((x, y) => Number(y.isNotice) - Number(x.isNotice));
               return (
                 <li key={b.id}>
                   <div className="group flex h-7 items-center gap-1 rounded px-1 hover:bg-zinc-100">

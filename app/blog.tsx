@@ -10,8 +10,10 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  ClassIcon,
   CloseIcon,
   CollapseAllIcon,
+  ExpandAllIcon,
   CommentIcon,
   DeleteIcon,
   EditIcon,
@@ -33,6 +35,7 @@ type Post = {
   attachments: Attachment[];
   userId: string;
   ownerEmail: string;
+  isNotice: boolean;
 };
 type Board = { id: number; name: string; isPublic: boolean };
 type Comment = {
@@ -48,6 +51,55 @@ const POST = "post";
 const BOARD = "board";
 const BUCKET = "post-attachments";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+// 이미지로 취급할 확장자 (본문에서 미리보기로 표시)
+const IMAGE_EXTENSIONS = [
+  "jpg",
+  "jpeg",
+  "jpe",
+  "jfif",
+  "pjpeg",
+  "pjp",
+  "png",
+  "apng",
+  "gif",
+  "webp",
+  "avif",
+  "bmp",
+  "dib",
+  "ico",
+  "cur",
+  "svg",
+  "svgz",
+  "tif",
+  "tiff",
+  "heic",
+  "heif",
+  "jxl",
+  "jp2",
+  "j2k",
+  "jpf",
+  "jpx",
+  "psd",
+  "raw",
+  "arw",
+  "cr2",
+  "nef",
+  "dng",
+  "orf",
+  "rw2",
+  "tga",
+  "pcx",
+  "ppm",
+  "pgm",
+  "pbm",
+  "pnm",
+  "xbm",
+];
+
+function isImageFile(name: string) {
+  const ext = name.includes(".") ? name.split(".").pop()!.toLowerCase() : "";
+  return IMAGE_EXTENSIONS.includes(ext);
+}
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 
 function formatSize(bytes: number) {
@@ -167,6 +219,7 @@ export default function Blog() {
   const [boardId, setBoardId] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [editingBoardId, setEditingBoardId] = useState<number | null>(null);
+  const [creatingBoard, setCreatingBoard] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
 
   const [posts, setPosts] = useState<Post[]>([]);
@@ -226,7 +279,7 @@ export default function Blog() {
     };
   }, [menuOpen]);
 
-  // 블로그 제목: public 게시판의 최신 게시물로 이동
+  // 블로그 제목: public 게시판의 최신 공지 게시물로 이동 (공지가 없으면 최신 게시물)
   function goToLatestPublicPost() {
     setWriting(false);
     setEditingBoardId(null);
@@ -238,7 +291,7 @@ export default function Blog() {
     if (pub.id === boardId) {
       // 이미 public 게시판이면 목록을 펼치고 가장 최신 글(목록 맨 위)을 연다
       setListOpen(true);
-      setSelectedId(posts[0]?.id ?? null);
+      setSelectedId((posts.find((p) => p.isNotice) ?? posts[0])?.id ?? null);
     } else {
       // 다른 게시판이면 public으로 전환 (불러온 뒤 최신 글이 자동 선택됨)
       pendingSelectRef.current = null;
@@ -290,8 +343,11 @@ export default function Blog() {
     let cancelled = false;
     supabase
       .from(POST)
-      .select("id, title, description, attachments, user_id, owner_email")
+      .select(
+        "id, title, description, attachments, user_id, owner_email, is_notice",
+      )
       .eq("board_id", boardId)
+      .order("is_notice", { ascending: false })
       .order("id", { ascending: false })
       .then(({ data, error }) => {
         if (cancelled) return;
@@ -306,6 +362,7 @@ export default function Blog() {
           attachments: (r.attachments ?? []) as Attachment[],
           userId: (r.user_id ?? "") as string,
           ownerEmail: (r.owner_email ?? "") as string,
+          isNotice: (r.is_notice ?? false) as boolean,
         }));
         setPosts(rows);
         const pending = pendingSelectRef.current;
@@ -322,6 +379,37 @@ export default function Blog() {
   }, [boardId]);
 
   const selected = posts.find((p) => p.id === selectedId) ?? null;
+
+  // 이미지 첨부 파일의 미리보기 주소 (비공개 저장소라 서명된 임시 주소를 사용)
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setImageUrls({});
+    setBrokenImages(new Set());
+    const images = (selected?.attachments ?? []).filter((a) =>
+      isImageFile(a.name),
+    );
+    if (images.length === 0) return;
+    let cancelled = false;
+    supabase.storage
+      .from(BUCKET)
+      .createSignedUrls(
+        images.map((a) => a.path),
+        3600,
+      )
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        const map: Record<string, string> = {};
+        data.forEach((d) => {
+          if (d.path && d.signedUrl) map[d.path] = d.signedUrl;
+        });
+        setImageUrls(map);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selected?.attachments]);
 
   // 다른 게시글로 바뀌면 댓글 영역을 닫고 초기화
   useEffect(() => {
@@ -437,10 +525,18 @@ export default function Blog() {
     }
   }
 
+  function startCreatingBoard() {
+    setEditingBoardId(null);
+    setNameDraft("새 게시판");
+    setCreatingBoard(true);
+  }
+
   async function createBoard() {
+    const name = nameDraft.trim();
+    if (!name) return;
     const { data, error } = await supabase
       .from(BOARD)
-      .insert({ name: "새 게시판" })
+      .insert({ name })
       .select("id, name, is_public")
       .single();
     if (error) {
@@ -452,9 +548,8 @@ export default function Blog() {
       ...boards,
       { id: data.id, name: data.name, isPublic: data.is_public },
     ]);
+    setCreatingBoard(false);
     selectBoard(data.id);
-    setNameDraft(data.name);
-    setEditingBoardId(data.id);
   }
 
   async function saveName(id: number) {
@@ -723,8 +818,10 @@ export default function Blog() {
         attachments: nextAttachments,
         userId,
         ownerEmail: userEmail,
+        isNotice: false,
       },
-      ...posts,
+      ...posts.filter((p) => p.isNotice),
+      ...posts.filter((p) => !p.isNotice),
     ]);
     setSelectedId(data.id);
   }
@@ -815,7 +912,7 @@ export default function Blog() {
             className={`flex h-9 shrink-0 items-center justify-end gap-0.5 px-2 ${authed ? "" : "hidden"}`}
           >
             <button
-              onClick={createBoard}
+              onClick={startCreatingBoard}
               aria-label="게시판 추가"
               title="게시판 추가"
               className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-foreground"
@@ -823,12 +920,16 @@ export default function Blog() {
               <AddIcon className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setListOpen(false)}
-              aria-label="모두 접기"
-              title="모두 접기"
+              onClick={() => setListOpen(!listOpen)}
+              aria-label={listOpen ? "모두 접기" : "모두 펼치기"}
+              title={listOpen ? "모두 접기" : "모두 펼치기"}
               className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-foreground"
             >
-              <CollapseAllIcon className="h-4 w-4" />
+              {listOpen ? (
+                <CollapseAllIcon className="h-4 w-4" />
+              ) : (
+                <ExpandAllIcon className="h-4 w-4" />
+              )}
             </button>
           </div>
 
@@ -862,6 +963,13 @@ export default function Blog() {
                         />
                         <button className="rounded border border-zinc-300 px-2 hover:bg-zinc-100">
                           저장
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingBoardId(null)}
+                          className="rounded border border-zinc-300 px-2 hover:bg-zinc-100"
+                        >
+                          취소
                         </button>
                       </form>
                     ) : (
@@ -919,31 +1027,102 @@ export default function Blog() {
                             글이 없습니다.
                           </li>
                         )}
-                        {posts.map((p) => {
-                          const active = !writing && p.id === selectedId;
+                        {(() => {
+                          const notices = b.isPublic
+                            ? posts.filter((p) => p.isNotice)
+                            : [];
+                          const normals = b.isPublic
+                            ? posts.filter((p) => !p.isNotice)
+                            : posts;
+                          const row = (p: Post, notice: boolean) => {
+                            const active = !writing && p.id === selectedId;
+                            return (
+                              <li key={p.id}>
+                                <button
+                                  onClick={() => {
+                                    setSelectedId(p.id);
+                                    setWriting(false);
+                                  }}
+                                  className={`flex h-7 w-full items-center gap-1.5 rounded px-2 text-left ${
+                                    active
+                                      ? "bg-selection"
+                                      : "hover:bg-zinc-100"
+                                  }`}
+                                >
+                                  {notice ? (
+                                    <ClassIcon className="h-4 w-4 shrink-0" />
+                                  ) : (
+                                    <HtmlFileIcon className="h-4 w-4 shrink-0" />
+                                  )}
+                                  <span className="truncate">{p.title}</span>
+                                </button>
+                              </li>
+                            );
+                          };
                           return (
-                            <li key={p.id}>
-                              <button
-                                onClick={() => {
-                                  setSelectedId(p.id);
-                                  setWriting(false);
-                                }}
-                                className={`flex h-7 w-full items-center gap-1.5 rounded px-2 text-left ${
-                                  active ? "bg-selection" : "hover:bg-zinc-100"
-                                }`}
-                              >
-                                <HtmlFileIcon className="h-4 w-4 shrink-0" />
-                                <span className="truncate">{p.title}</span>
-                              </button>
-                            </li>
+                            <>
+                              {notices.map((p) => row(p, true))}
+                              {notices.length > 0 ? (
+                                // 공지(부모) 아래에 일반 글(자식)을 한 단계 들여쓰고 세로선으로 구분
+                                <li>
+                                  <ul className="ml-[15px] flex flex-col gap-px border-l border-zinc-200 pl-1">
+                                    {normals.map((p) => row(p, false))}
+                                  </ul>
+                                </li>
+                              ) : (
+                                normals.map((p) => row(p, false))
+                              )}
+                            </>
                           );
-                        })}
+                        })()}
                       </ul>
                     )}
                   </li>
                 </Fragment>
               );
             })}
+            {creatingBoard && (
+              <>
+                {boards.length > 0 && boards[boards.length - 1].isPublic && (
+                  <li
+                    role="separator"
+                    className="mx-2 my-1.5 h-px bg-zinc-200"
+                  />
+                )}
+                <li>
+                  <form
+                    className="flex gap-1"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      createBoard();
+                    }}
+                  >
+                    <input
+                      autoFocus
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      onKeyDown={(e) =>
+                        e.key === "Escape" && setCreatingBoard(false)
+                      }
+                      className="min-w-0 flex-1 rounded border border-zinc-300 bg-transparent px-2 py-1"
+                    />
+                    <button
+                      disabled={nameDraft.trim() === ""}
+                      className="rounded border border-zinc-300 px-2 hover:bg-zinc-100 disabled:opacity-40"
+                    >
+                      저장
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCreatingBoard(false)}
+                      className="rounded border border-zinc-300 px-2 hover:bg-zinc-100"
+                    >
+                      취소
+                    </button>
+                  </form>
+                </li>
+              </>
+            )}
           </ul>
 
           {/* 게시판 목록 스크롤과 무관하게 항상 사이드바 맨 아래 가운데에 고정 */}
@@ -965,7 +1144,11 @@ export default function Blog() {
           <div className="flex h-9 shrink-0 items-stretch border-b border-zinc-200">
             {(writing || selected) && (
               <div className="flex items-center gap-2 border-b-[3px] border-primary px-3">
-                <HtmlFileIcon className="h-4 w-4 shrink-0" />
+                {!writing && selected?.isNotice ? (
+                  <ClassIcon className="h-4 w-4 shrink-0" />
+                ) : (
+                  <HtmlFileIcon className="h-4 w-4 shrink-0" />
+                )}
                 <span className="max-w-[16rem] truncate">
                   {writing
                     ? title || (editingId !== null ? "글 수정" : "새 글")
@@ -1206,25 +1389,52 @@ export default function Blog() {
                       onClick={openMoveDialog}
                       aria-label="이동"
                       title="이동"
-                      className="inline-flex items-center rounded border border-zinc-300 px-2 py-1 text-sm hover:bg-zinc-100"
+                      className="inline-flex h-7 min-w-[3.25rem] items-center justify-center rounded border border-zinc-300 px-3 text-sm hover:bg-zinc-100"
                     >
                       <MoveIcon className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => startEditing(selected)}
-                      className="rounded border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-100"
+                      className="inline-flex h-7 min-w-[3.25rem] items-center justify-center rounded border border-zinc-300 px-3 text-sm hover:bg-zinc-100"
                     >
                       수정
                     </button>
                     <button
                       onClick={() => deletePost(selected.id)}
-                      className="rounded border border-zinc-300 px-3 py-1 text-sm text-ij-error hover:bg-zinc-100"
+                      className="inline-flex h-7 min-w-[3.25rem] items-center justify-center rounded border border-zinc-300 px-3 text-sm text-ij-error hover:bg-zinc-100"
                     >
                       삭제
                     </button>
                   </div>
                 </div>
                 <CodeView text={selected.content} />
+                {selected.attachments.some(
+                  (a) => isImageFile(a.name) && !brokenImages.has(a.path),
+                ) && (
+                  <div className="mt-6 flex flex-col gap-4">
+                    {selected.attachments
+                      .filter(
+                        (a) => isImageFile(a.name) && !brokenImages.has(a.path),
+                      )
+                      .map((a) =>
+                        imageUrls[a.path] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={a.path}
+                            src={imageUrls[a.path]}
+                            alt={a.name}
+                            loading="lazy"
+                            onError={() =>
+                              setBrokenImages((prev) =>
+                                new Set(prev).add(a.path),
+                              )
+                            }
+                            className="max-h-[32rem] max-w-full self-start rounded border border-zinc-200"
+                          />
+                        ) : null,
+                      )}
+                  </div>
+                )}
                 {selected.attachments.length > 0 && (
                   <ul className="mt-8 flex flex-col gap-1 border-t border-zinc-200 pt-4 text-sm">
                     <li className="font-medium">첨부 파일</li>
@@ -1358,15 +1568,29 @@ export default function Blog() {
                   </div>
                 </div>
               </article>
+            ) : !loaded || authed === null ? null : authed === false ? (
+              // 비로그인 상태 본문: IntelliJ(Java) 구문 강조 색으로 표시
+              <code className="block text-center">
+                <span className="text-foreground">System</span>
+                <span className="text-foreground">.</span>
+                <span className="text-ij-field">out</span>
+                <span className="text-foreground">.</span>
+                <span className="text-ij-function">println</span>
+                <span className="text-foreground">(</span>
+                <Link
+                  href="/login"
+                  title="로그인"
+                  className="text-ij-string hover:underline"
+                >
+                  &quot;Hello, World!&quot;
+                </Link>
+                <span className="text-foreground">);</span>
+              </code>
             ) : (
               <p className="text-center text-zinc-500">
-                {!loaded || authed === null
-                  ? ""
-                  : authed === false
-                    ? "로그인하면 게시판과 게시글을 이용할 수 있습니다."
-                    : boardId !== null
-                      ? "글을 선택하거나 새 글을 작성하세요."
-                      : "게시판이 없습니다. + 버튼으로 게시판을 만들어 주세요."}
+                {boardId !== null
+                  ? "글을 선택하거나 새 글을 작성하세요."
+                  : "게시판이 없습니다. + 버튼으로 게시판을 만들어 주세요."}
               </p>
             )}
           </div>

@@ -4,6 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import {
+  AuthShell,
+  Field,
+  Separator,
+  kakaoButton,
+  linkClass,
+  primaryButton,
+  secondaryButton,
+} from "../auth-ui";
+import { ShieldIcon } from "../icons";
 
 function toKorean(message: string, code?: string) {
   const m = message.toLowerCase();
@@ -53,48 +63,39 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <>
-      {error && (
-        <div
-          role="alert"
-          className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded bg-red-600 px-4 py-3 text-sm text-white shadow-lg"
-        >
-          {error}
-        </div>
-      )}
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-4 p-8">
-        <h1 className="text-2xl font-bold">비밀번호 재설정</h1>
-        <form onSubmit={onSubmit} className="flex flex-col gap-3">
-          <input
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="새 비밀번호 (6자 이상)"
-            className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
-          />
-          <input
-            type="password"
-            required
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder="새 비밀번호 확인"
-            className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
-          />
-          <button
-            disabled={!canSubmit || loading}
-            className="rounded bg-primary hover:bg-primary-hover px-4 py-2 text-sm font-medium text-white  disabled:opacity-50"
-          >
+    <AuthShell
+      title="비밀번호 재설정"
+      icon={<ShieldIcon className="h-4 w-4" />}
+      error={error}
+      onDismissError={() => setError("")}
+    >
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        <Field
+          label="새 비밀번호 (6자 이상)"
+          type="password"
+          required
+          minLength={6}
+          autoFocus
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Field
+          label="새 비밀번호 확인"
+          type="password"
+          required
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+        />
+        <div className="flex justify-end">
+          <button disabled={!canSubmit || loading} className={primaryButton}>
             비밀번호 변경
           </button>
-        </form>
-        <p className="text-sm text-zinc-500">
-          <Link href="/forgot-password" className="underline">
-            링크가 만료되었나요? 다시 요청하기
-          </Link>
-        </p>
-      </main>
-    </>
+        </div>
+      </form>
+      <Separator />
+      <Link href="/forgot-password" className={`text-xs ${linkClass}`}>
+        링크가 만료되었나요? 다시 요청하기
+      </Link>
+    </AuthShell>
   );
 }

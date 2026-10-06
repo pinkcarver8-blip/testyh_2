@@ -235,15 +235,15 @@ export function FileTextIcon(props: IconProps) {
       {...props}
     >
       <g fill="none" fillRule="evenodd">
-        <polygon fill="#B4B8BF" fillOpacity=".95" points="7 1 3 5 7 5" />
+        <polygon fill="#9AA7B0" fillOpacity=".8" points="7 1 3 5 7 5" />
         <polygon
-          fill="#B4B8BF"
-          fillOpacity=".95"
+          fill="#9AA7B0"
+          fillOpacity=".8"
           points="8 1 8 6 3 6 3 15 13 15 13 1"
         />
         <path
-          fill="#4E5157"
-          fillOpacity="1"
+          fill="#6F737A"
+          fillOpacity=".7"
           d="M5,12 L9,12 L9,11 L5,11 L5,12 Z M5,10 L11,10 L11,9 L5,9 L5,10 Z M5,8 L11,8 L11,7 L5,7 L5,8 Z"
         />
       </g>
@@ -305,6 +305,26 @@ export function CollapseAllIcon(props: IconProps) {
       <path
         fillRule="evenodd"
         d="M14.442 1.558a.625.625 0 0 1 0 .884l-3.433 3.433H13.5a.625.625 0 1 1 0 1.25h-4a.625.625 0 0 1-.625-.625v-4a.625.625 0 1 1 1.25 0v2.491l3.433-3.433a.625.625 0 0 1 .884 0ZM1.875 9.5c0-.345.28-.625.625-.625h4a.625.625 0 0 1 .625.625v4a.625.625 0 1 1-1.25 0v-2.491l-3.433 3.433a.625.625 0 1 1-.884-.884l3.433-3.433H2.5a.625.625 0 0 1-.625-.625Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+export function ExpandAllIcon(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        fillRule="evenodd"
+        d="M9.066 2.637c0-.345.28-.625.625-.625h3.692c.345 0 .625.28.625.625v3.692a.625.625 0 1 1-1.25 0V4.146L9.942 6.96a.625.625 0 1 1-.884-.883l2.816-2.816H9.691a.625.625 0 0 1-.625-.625ZM7.01 9.03a.625.625 0 0 1-.006.884l-2.867 2.834h2.176a.625.625 0 0 1 0 1.25H2.62a.625.625 0 0 1-.625-.625V9.682a.625.625 0 1 1 1.25 0v2.19l2.88-2.846a.625.625 0 0 1 .884.005Z"
         clipRule="evenodd"
       />
     </svg>
@@ -431,6 +451,27 @@ export function HtmlFileIcon(props: IconProps) {
       <path
         d="M9.63139 4.9736C9.36983 4.77016 9.3227 4.39319 9.52615 4.13163C9.72959 3.87006 10.1066 3.82294 10.3681 4.02638L15.4771 7.99999L10.3681 11.9736C10.1066 12.177 9.72959 12.1299 9.52615 11.8684C9.3227 11.6068 9.36983 11.2298 9.63139 11.0264L13.5225 7.99999L9.63139 4.9736Z"
         fill="#57965C"
+      />
+    </svg>
+  );
+}
+
+// IntelliJ IDEA New UI(expui) class 노드 아이콘 (dark) — JetBrains/intellij-community, Apache-2.0
+export function ClassIcon(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      {...props}
+    >
+      <circle cx="8" cy="8" r="6.5" fill="#25324D" stroke="#548AF7" />
+      <path
+        d="M8.13295 11.5C9.61223 11.5 10.8836 10.6105 11.2075 9.33909H10.2213C9.90229 10.0739 9.11914 10.6057 8.13295 10.6057C6.77936 10.6057 5.80284 9.51796 5.80284 8C5.80284 6.48204 6.77936 5.39434 8.13295 5.39434C9.11914 5.39434 9.90229 5.92611 10.2213 6.66091H11.2075C10.8836 5.3895 9.61223 4.5 8.13295 4.5C6.21859 4.5 4.79248 5.99378 4.79248 8C4.79248 10.0062 6.21859 11.5 8.13295 11.5Z"
+        fill="#548AF7"
       />
     </svg>
   );

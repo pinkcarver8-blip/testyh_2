@@ -4,6 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import {
+  AuthShell,
+  Field,
+  Separator,
+  kakaoButton,
+  linkClass,
+  primaryButton,
+  secondaryButton,
+} from "../auth-ui";
+import { UserIcon } from "../icons";
 
 function toKorean(message: string, code?: string) {
   const m = message.toLowerCase();
@@ -62,60 +72,50 @@ export default function LoginPage() {
   }
 
   return (
-    <>
-      {error && (
-        <div
-          role="alert"
-          className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded bg-red-600 px-4 py-3 text-sm text-white shadow-lg"
-        >
-          {error}
-        </div>
-      )}
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-4 p-8">
-        <h1 className="text-2xl font-bold">로그인</h1>
-        <form onSubmit={onSubmit} className="flex flex-col gap-3">
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="이메일"
-            className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
-          />
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="비밀번호"
-            className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
-          />
-          <button
-            disabled={!canSubmit || loading}
-            className="rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:border dark:border-zinc-600"
-          >
+    <AuthShell
+      title="로그인"
+      icon={<UserIcon className="h-4 w-4" />}
+      error={error}
+      onDismissError={() => setError("")}
+    >
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        <Field
+          label="이메일"
+          type="email"
+          required
+          autoFocus
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="name@example.com"
+        />
+        <Field
+          label="비밀번호"
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <div className="flex justify-end">
+          <button disabled={!canSubmit || loading} className={primaryButton}>
             로그인
           </button>
-        </form>
-        <button
-          type="button"
-          onClick={signInWithKakao}
-          className="rounded bg-[#FEE500] px-4 py-2 text-sm font-medium text-[#191919] hover:opacity-90"
-        >
-          카카오 계정으로 로그인
-        </button>
-        <p className="text-sm text-zinc-500">
-          <Link href="/forgot-password" className="underline">
-            비밀번호를 잊으셨나요?
-          </Link>
-        </p>
-        <p className="text-sm text-zinc-500">
+        </div>
+      </form>
+      <Separator />
+      <button type="button" onClick={signInWithKakao} className={kakaoButton}>
+        카카오 계정으로 로그인
+      </button>
+      <div className="flex flex-col gap-1 text-xs text-zinc-500">
+        <Link href="/forgot-password" className={linkClass}>
+          비밀번호를 잊으셨나요?
+        </Link>
+        <span>
           계정이 없으신가요?{" "}
-          <Link href="/signup" className="underline">
+          <Link href="/signup" className={linkClass}>
             회원가입
           </Link>
-        </p>
-      </main>
-    </>
+        </span>
+      </div>
+    </AuthShell>
   );
 }
