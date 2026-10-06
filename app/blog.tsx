@@ -66,16 +66,18 @@ export default function Blog() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex items-center border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+      <header className="border-b border-zinc-200 dark:border-zinc-800">
+        <div className="mx-auto flex w-full max-w-5xl items-center px-4 py-3">
         <button
           onClick={startWriting}
           className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80"
         >
           글쓰기
         </button>
+        </div>
       </header>
 
-      <div className="flex flex-1">
+      <div className="mx-auto flex w-full max-w-5xl flex-1">
         <aside className="w-64 shrink-0 border-r border-zinc-200 p-4 dark:border-zinc-800">
           <div className="mb-4 flex items-center justify-between gap-2">
             {editingName ? (
@@ -135,7 +137,7 @@ export default function Blog() {
 
         <main className="flex-1 p-8">
           {writing ? (
-            <form onSubmit={submitPost} className="flex max-w-2xl flex-col gap-3">
+            <form onSubmit={submitPost} className="mx-auto flex max-w-2xl flex-col gap-3">
               <input
                 autoFocus
                 value={title}
@@ -164,7 +166,7 @@ export default function Blog() {
               </div>
             </form>
           ) : selected ? (
-            <article className="max-w-2xl">
+            <article className="mx-auto max-w-2xl">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <h1 className="text-2xl font-bold">{selected.title}</h1>
                 <button
@@ -177,7 +179,7 @@ export default function Blog() {
               <p className="whitespace-pre-wrap leading-7">{selected.content}</p>
             </article>
           ) : (
-            <p className="text-zinc-500">글을 선택하거나 새 글을 작성하세요.</p>
+            <p className="text-center text-zinc-500">글을 선택하거나 새 글을 작성하세요.</p>
           )}
         </main>
       </div>
