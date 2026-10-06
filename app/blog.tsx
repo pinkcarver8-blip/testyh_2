@@ -1525,8 +1525,8 @@ export default function Blog() {
                                 </div>
                               </div>
                             ) : (
-                              <>
-                                <div className="p-3">
+                              <div className="p-3">
+                                <div className="flex items-center justify-between gap-2">
                                   <span className="block text-xs text-zinc-500">
                                     <span className="text-ij-field font-semibold">
                                       {c.author}
@@ -1536,30 +1536,34 @@ export default function Blog() {
                                       "ko-KR",
                                     )}
                                   </span>
-                                  <span className="mt-1 block whitespace-pre-wrap text-sm leading-6">
-                                    {c.content}
-                                  </span>
+                                  {mine && (
+                                    <div className="-my-1.5 -mr-1.5 flex shrink-0 items-center gap-1">
+                                      <button
+                                        onClick={() => {
+                                          setCommentEditDraft(c.content);
+                                          setEditingCommentId(c.id);
+                                        }}
+                                        aria-label="댓글 수정"
+                                        title="수정"
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded text-zinc-500 hover:bg-zinc-100 hover:text-foreground"
+                                      >
+                                        <EditIcon className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => deleteComment(c.id)}
+                                        aria-label="댓글 삭제"
+                                        title="삭제"
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded text-zinc-500 hover:bg-zinc-100 hover:text-ij-error"
+                                      >
+                                        <DeleteIcon className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
-                                {mine && (
-                                  <div className="flex justify-end gap-2 px-3 pb-3">
-                                    <button
-                                      onClick={() => {
-                                        setCommentEditDraft(c.content);
-                                        setEditingCommentId(c.id);
-                                      }}
-                                      className="rounded border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-100"
-                                    >
-                                      수정
-                                    </button>
-                                    <button
-                                      onClick={() => deleteComment(c.id)}
-                                      className="rounded border border-zinc-300 px-3 py-1 text-sm text-ij-error hover:bg-zinc-100"
-                                    >
-                                      삭제
-                                    </button>
-                                  </div>
-                                )}
-                              </>
+                                <span className="mt-1 block whitespace-pre-wrap text-sm leading-6">
+                                  {c.content}
+                                </span>
+                              </div>
                             )}
                           </li>
                         );
