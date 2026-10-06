@@ -5,15 +5,18 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 
 type Post = { id: number; title: string; content: string };
+type Board = { id: number; name: string };
 
 const supabase = createClient();
-const TABLE = "testyh_2";
+const POST = "post";
+const BOARD = "board";
 
 export default function Blog() {
-  const [boardName, setBoardName] = useState("게시판");
-  const [boardExists, setBoardExists] = useState(true);
-  const [editingName, setEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState(boardName);
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [boardId, setBoardId] = useState<number | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [editingBoardId, setEditingBoardId] = useState<number | null>(null);
+  const [nameDraft, setNameDraft] = useState("");
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -25,10 +28,32 @@ export default function Blog() {
 
   useEffect(() => {
     supabase
-      .from(TABLE)
+      .from(BOARD)
+      .select("id, name")
+      .order("id")
+      .then(({ data, error }) => {
+        if (error) setError(error.message);
+        const rows = (data ?? []) as Board[];
+        setBoards(rows);
+        setBoardId(rows[0]?.id ?? null);
+        setLoaded(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (boardId === null) {
+      setPosts([]);
+      setSelectedId(null);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from(POST)
       .select("id, title, description")
+      .eq("board_id", boardId)
       .order("id", { ascending: false })
       .then(({ data, error }) => {
+        if (cancelled) return;
         if (error) {
           setError(error.message);
           return;
@@ -41,38 +66,69 @@ export default function Blog() {
         setPosts(rows);
         setSelectedId(rows[0]?.id ?? null);
       });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [boardId]);
 
   const selected = posts.find((p) => p.id === selectedId) ?? null;
 
-  function saveName() {
-    const next = nameDraft.trim();
-    if (next) setBoardName(next);
-    setEditingName(false);
+  function selectBoard(id: number) {
+    setBoardId(id);
+    setWriting(false);
+    setEditingBoardId(null);
   }
 
-  async function deleteBoard() {
-    if (!confirm(`'${boardName}' 게시판과 모든 게시글을 삭제할까요?`)) return;
-    const { error } = await supabase.from(TABLE).delete().gte("id", 0);
+  async function createBoard() {
+    const { data, error } = await supabase
+      .from(BOARD)
+      .insert({ name: "새 게시판" })
+      .select("id, name")
+      .single();
     if (error) {
       setError(error.message);
       return;
     }
     setError("");
-    setBoardExists(false);
-    setPosts([]);
-    setSelectedId(null);
-    setWriting(false);
+    setBoards([...boards, data as Board]);
+    selectBoard(data.id);
+    setNameDraft(data.name);
+    setEditingBoardId(data.id);
   }
 
-  function createBoard() {
-    setBoardName("게시판");
-    setBoardExists(true);
+  async function saveName(id: number) {
+    const next = nameDraft.trim();
+    if (next) {
+      const { error } = await supabase.from(BOARD).update({ name: next }).eq("id", id);
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      setError("");
+      setBoards(boards.map((b) => (b.id === id ? { ...b, name: next } : b)));
+    }
+    setEditingBoardId(null);
+  }
+
+  async function deleteBoard(board: Board) {
+    if (!confirm(`'${board.name}' 게시판을 삭제할까요?`)) return;
+    const { error } = await supabase.from(BOARD).delete().eq("id", board.id);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setError("");
+    const rest = boards.filter((b) => b.id !== board.id);
+    setBoards(rest);
+    if (board.id === boardId) {
+      setBoardId(rest[0]?.id ?? null);
+      setWriting(false);
+    }
   }
 
   async function deletePost(id: number) {
     if (!confirm("이 게시글을 삭제할까요?")) return;
-    const { error } = await supabase.from(TABLE).delete().eq("id", id);
+    const { error } = await supabase.from(POST).delete().eq("id", id);
     if (error) {
       setError(error.message);
       return;
@@ -102,7 +158,7 @@ export default function Blog() {
     if (!title.trim()) return;
     if (editingId !== null) {
       const { error } = await supabase
-        .from(TABLE)
+        .from(POST)
         .update({ title: title.trim(), description: content })
         .eq("id", editingId);
       if (error) {
@@ -119,8 +175,8 @@ export default function Blog() {
       return;
     }
     const { data, error } = await supabase
-      .from(TABLE)
-      .insert({ title: title.trim(), description: content })
+      .from(POST)
+      .insert({ title: title.trim(), description: content, board_id: boardId })
       .select("id")
       .single();
     if (error) {
@@ -139,7 +195,7 @@ export default function Blog() {
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
         <button
           onClick={startWriting}
-          disabled={!boardExists}
+          disabled={boardId === null}
           className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-80 disabled:opacity-40"
         >
           글쓰기
@@ -163,93 +219,103 @@ export default function Blog() {
 
       <div className="mx-auto flex w-full max-w-5xl flex-1">
         <aside className="w-64 shrink-0 border-r border-zinc-200 p-4 dark:border-zinc-800">
-          {!boardExists ? (
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">게시판</h2>
             <button
               onClick={createBoard}
-              className="w-full rounded border border-zinc-300 px-2 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+              aria-label="게시판 추가"
+              title="게시판 추가"
+              className="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-900"
             >
-              게시판 만들기
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
             </button>
-          ) : (
-          <>
-          <div className="mb-4 flex items-center justify-between gap-2">
-            {editingName ? (
-              <form
-                className="flex w-full gap-1"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  saveName();
-                }}
-              >
-                <input
-                  autoFocus
-                  value={nameDraft}
-                  onChange={(e) => setNameDraft(e.target.value)}
-                  className="min-w-0 flex-1 rounded border border-zinc-300 bg-transparent px-2 py-1 text-sm dark:border-zinc-700"
-                />
-                <button className="rounded border border-zinc-300 px-2 text-sm dark:border-zinc-700">
-                  저장
-                </button>
-              </form>
-            ) : (
-              <>
-                <h2 className="truncate text-lg font-semibold">{boardName}</h2>
-                <button
-                  onClick={() => {
-                    setNameDraft(boardName);
-                    setEditingName(true);
-                  }}
-                  className="shrink-0 rounded border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                >
-                  이름 수정
-                </button>
-                <button
-                  onClick={deleteBoard}
-                  aria-label="게시판 삭제"
-                  title="게시판 삭제"
-                  className="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-red-500 dark:hover:bg-zinc-900"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
-                  >
-                    <path d="M3 6h18" />
-                    <path d="M8 6V4h8v2" />
-                    <path d="M19 6l-1 14H6L5 6" />
-                    <path d="M10 11v6M14 11v6" />
-                  </svg>
-                </button>
-              </>
-            )}
           </div>
 
           <ul className="flex flex-col gap-1">
-            {posts.map((p) => (
-              <li key={p.id}>
-                <button
-                  onClick={() => {
-                    setSelectedId(p.id);
-                    setWriting(false);
-                  }}
-                  className={`w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-900 ${
-                    !writing && p.id === selectedId
-                      ? "bg-zinc-100 font-medium dark:bg-zinc-900"
-                      : ""
-                  }`}
-                >
-                  {p.title}
-                </button>
+            {boards.map((b) => (
+              <li key={b.id}>
+                {editingBoardId === b.id ? (
+                  <form
+                    className="flex gap-1"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      saveName(b.id);
+                    }}
+                  >
+                    <input
+                      autoFocus
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      className="min-w-0 flex-1 rounded border border-zinc-300 bg-transparent px-2 py-1 text-sm dark:border-zinc-700"
+                    />
+                    <button className="rounded border border-zinc-300 px-2 text-sm dark:border-zinc-700">
+                      저장
+                    </button>
+                  </form>
+                ) : (
+                  <div
+                    className={`flex items-center justify-between gap-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 ${
+                      b.id === boardId ? "bg-zinc-100 dark:bg-zinc-900" : ""
+                    }`}
+                  >
+                    <button
+                      onClick={() => selectBoard(b.id)}
+                      className={`min-w-0 flex-1 truncate px-2 py-1.5 text-left text-sm ${
+                        b.id === boardId ? "font-semibold" : ""
+                      }`}
+                    >
+                      {b.name}
+                    </button>
+                    <div className="flex shrink-0 items-center pr-1">
+                      <button
+                        onClick={() => {
+                          setNameDraft(b.name);
+                          setEditingBoardId(b.id);
+                        }}
+                        aria-label="게시판 이름 수정"
+                        title="게시판 이름 수정"
+                        className="rounded p-1 text-zinc-500 hover:text-foreground"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                      </button>
+                      <button
+                        onClick={() => deleteBoard(b)}
+                        aria-label="게시판 삭제"
+                        title="게시판 삭제"
+                        className="rounded p-1 text-zinc-500 hover:text-red-500"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {b.id === boardId && (
+                  <ul className="mb-1 ml-3 mt-1 flex flex-col gap-0.5 border-l border-zinc-200 pl-2 dark:border-zinc-800">
+                    {posts.length === 0 && (
+                      <li className="px-2 py-1 text-xs text-zinc-500">글이 없습니다.</li>
+                    )}
+                    {posts.map((p) => (
+                      <li key={p.id}>
+                        <button
+                          onClick={() => {
+                            setSelectedId(p.id);
+                            setWriting(false);
+                          }}
+                          className={`w-full truncate rounded px-2 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-900 ${
+                            !writing && p.id === selectedId
+                              ? "bg-zinc-100 font-medium dark:bg-zinc-900"
+                              : ""
+                          }`}
+                        >
+                          {p.title}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
-          </>
-          )}
         </aside>
 
         <main className="flex-1 p-8">
@@ -305,7 +371,7 @@ export default function Blog() {
               <p className="whitespace-pre-wrap leading-7">{selected.content}</p>
             </article>
           ) : (
-            <p className="text-center text-zinc-500">{boardExists ? "글을 선택하거나 새 글을 작성하세요." : "게시판이 없습니다. 게시판을 만들어 주세요."}</p>
+            <p className="text-center text-zinc-500">{!loaded ? "" : boardId !== null ? "글을 선택하거나 새 글을 작성하세요." : "게시판이 없습니다. + 버튼으로 게시판을 만들어 주세요."}</p>
           )}
         </main>
       </div>
