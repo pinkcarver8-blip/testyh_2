@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import {
   ArrowLeftIcon,
@@ -682,38 +682,61 @@ export default function AdminPage() {
               <>
                 <h2 className="text-lg font-semibold">이동할 게시판 선택</h2>
                 <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
-                  {sortedBoards.map((b) => {
+                  {sortedBoards.map((b, i) => {
                     const current = b.id === dialog.post.boardId;
                     const chosen = b.id === moveTarget;
+                    const startsPersonal =
+                      !b.isPublic && i > 0 && sortedBoards[i - 1].isPublic;
                     return (
-                      <li key={b.id}>
-                        <button
-                          type="button"
-                          disabled={current}
-                          onClick={() => setMoveTarget(b.id)}
-                          aria-pressed={chosen}
-                          className={`flex w-full items-center justify-between gap-2 rounded px-3 py-1.5 text-left ${
-                            current
-                              ? "cursor-not-allowed text-zinc-400"
-                              : chosen
-                                ? "bg-selection"
-                                : "hover:bg-zinc-100"
-                          }`}
-                        >
-                          <span className="min-w-0 truncate">
-                            <span className="text-ij-function">{b.name}</span>{" "}
-                            <span className="text-xs text-zinc-500">
-                              {b.ownerEmail}
+                      <Fragment key={b.id}>
+                        {startsPersonal && (
+                          <li
+                            role="separator"
+                            className="mx-2 my-1.5 h-px bg-zinc-200"
+                          />
+                        )}
+                        <li>
+                          <button
+                            type="button"
+                            disabled={current}
+                            onClick={() => setMoveTarget(b.id)}
+                            aria-pressed={chosen}
+                            className={`flex w-full items-center justify-between gap-2 rounded px-3 py-1.5 text-left ${
+                              current
+                                ? "cursor-not-allowed text-zinc-400"
+                                : chosen
+                                  ? "bg-selection"
+                                  : "hover:bg-zinc-100"
+                            }`}
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <FolderIcon
+                                className={`h-4 w-4 shrink-0 ${
+                                  b.isPublic
+                                    ? "text-[#dba73a]"
+                                    : "text-[#9aa7b0]"
+                                }`}
+                              />
+                              <span className="truncate">
+                                <span className="text-ij-function">
+                                  {b.name}
+                                </span>{" "}
+                                <span className="text-xs text-zinc-500">
+                                  {b.ownerEmail}
+                                </span>
+                              </span>
                             </span>
-                          </span>
-                          {current && (
-                            <span className="shrink-0 text-xs">
-                              현재 게시판
-                            </span>
-                          )}
-                          {chosen && <CheckIcon className="h-4 w-4 shrink-0" />}
-                        </button>
-                      </li>
+                            {current && (
+                              <span className="shrink-0 text-xs">
+                                현재 게시판
+                              </span>
+                            )}
+                            {chosen && (
+                              <CheckIcon className="h-4 w-4 shrink-0" />
+                            )}
+                          </button>
+                        </li>
+                      </Fragment>
                     );
                   })}
                 </ul>

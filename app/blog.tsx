@@ -1635,33 +1635,50 @@ export default function Blog() {
           >
             <h2 className="text-lg font-semibold">이동할 게시판 선택</h2>
             <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
-              {boards.map((b) => {
+              {boards.map((b, i) => {
                 const current = b.id === boardId;
                 const chosen = b.id === moveTarget;
+                const startsPersonal =
+                  !b.isPublic && i > 0 && boards[i - 1].isPublic;
                 return (
-                  <li key={b.id}>
-                    <button
-                      type="button"
-                      disabled={current}
-                      onClick={() => setMoveTarget(b.id)}
-                      aria-pressed={chosen}
-                      className={`flex w-full items-center justify-between gap-2 rounded px-3 py-2 text-left text-sm ${
-                        current
-                          ? "cursor-not-allowed text-zinc-400"
-                          : chosen
-                            ? "bg-zinc-200 font-semibold"
-                            : "hover:bg-zinc-100"
-                      }`}
-                    >
-                      <span className="text-ij-function truncate">
-                        {b.name}
-                      </span>
-                      {current && (
-                        <span className="shrink-0 text-xs">현재 게시판</span>
-                      )}
-                      {chosen && <CheckIcon className="h-4 w-4 shrink-0" />}
-                    </button>
-                  </li>
+                  <Fragment key={b.id}>
+                    {startsPersonal && (
+                      <li
+                        role="separator"
+                        className="mx-2 my-1.5 h-px bg-zinc-200"
+                      />
+                    )}
+                    <li>
+                      <button
+                        type="button"
+                        disabled={current}
+                        onClick={() => setMoveTarget(b.id)}
+                        aria-pressed={chosen}
+                        className={`flex w-full items-center justify-between gap-2 rounded px-3 py-2 text-left text-sm ${
+                          current
+                            ? "cursor-not-allowed text-zinc-400"
+                            : chosen
+                              ? "bg-zinc-200 font-semibold"
+                              : "hover:bg-zinc-100"
+                        }`}
+                      >
+                        <span className="flex min-w-0 flex-1 items-center gap-2">
+                          <FolderIcon
+                            className={`h-4 w-4 shrink-0 ${
+                              b.isPublic ? "text-[#dba73a]" : "text-[#9aa7b0]"
+                            }`}
+                          />
+                          <span className="text-ij-function truncate">
+                            {b.name}
+                          </span>
+                        </span>
+                        {current && (
+                          <span className="shrink-0 text-xs">현재 게시판</span>
+                        )}
+                        {chosen && <CheckIcon className="h-4 w-4 shrink-0" />}
+                      </button>
+                    </li>
+                  </Fragment>
                 );
               })}
             </ul>
@@ -1680,8 +1697,7 @@ export default function Blog() {
               </button>
               <button
                 onClick={() => setMoveOpen(false)}
-                disabled={moveTarget === null}
-                className="rounded border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 disabled:opacity-40"
+                className="rounded border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100"
               >
                 취소
               </button>
